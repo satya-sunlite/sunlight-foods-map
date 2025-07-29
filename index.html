@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Locations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .container {
+            height: 100vh;
+            display: flex;
+            flex-direction: row;
+        }
+
+        .sidebar {
+            flex: 1;
+            max-width: 400px;
+            background: white;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .search-container {
+            padding: 20px;
+            background: #ff6b35;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 40px 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+        }
+
+        .territory-filter {
+            margin-top: 12px;
+        }
+
+        .territory-select {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+            outline: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .locations-header {
+            padding: 16px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .location-list {
+            padding: 0;
+        }
+
+        .location-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .location-item:hover {
+            background: #f8f9fa;
+        }
+
+        .location-item.active {
+            background: #e8f4ff;
+            border-left: 3px solid #ff6b35;
+        }
+
+        .location-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f0f0f0;
+        }
+
+        .location-info {
+            flex: 1;
+        }
+
+        .location-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .location-address {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+
+        .location-territory {
+            display: inline-block;
+            background: #ff6b35;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .map-container {
+            flex: 2;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-popup {
+            max-width: 250px;
+        }
+
+        .popup-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .popup-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .popup-address {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.3;
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: 150vh;
+            }
+
+            .sidebar {
+                max-width: none;
+                height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid #e0e0e0;
+            }
+
+            .map-container {
+                height: 50vh;
+                flex: 1;
+            }
+
+            .search-container {
+                padding: 16px;
+            }
+
+            .location-item {
+                padding: 12px 16px;
+            }
+
+            .location-image {
+                width: 50px;
+                height: 50px;
+            }
+
+            .location-name {
+                font-size: 13px;
+            }
+
+            .location-address {
+                font-size: 11px;
+            }
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Search locations..." id="searchInput">
+                    <span class="search-icon">🔍</span>
+                </div>
+                <div class="territory-filter">
+                    <select class="territory-select" id="territoryFilter">
+                        <option value="">All Territories</option>
+                    </select>
+                </div>
+            </div>
+            <div class="locations-header" id="locationsHeader">
+                Loading locations...
+            </div>
+            <div class="location-list" id="locationList">
+                <div class="loading">Loading locations...</div>
+            </div>
+        </div>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script>
+        const locations = [
+            { name: "Namaste Indian Supermarket", address: "85 Kingston Rd E Ajax, ON L1S 7M9, Canada", territory: "Ajax", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4noLQaCw0-P4PdbRne_DIBFS_qcU1zQcYtvqvEmGHWlSrYslGEG2O2O2B2wrGtR7jlhGZD-2_DWYb95KjyCSFOgcIUsnXRdB5zXr8CRhLbabuEWu51evoenaKGx3UvYNIyQFXHuv=w408-h544-k-no" },
+            { name: "Panchvati Supermarket-Ajax", address: "18 Harwood Ave South Ajax, ON L1S 6N2, Canada", territory: "Ajax", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrGX4RH9UGhunHxEsr1D9ejUkt_qgh-TO0AZ7mrjTEHrTp8zcDEveJEMWfEXQGrCRBOtdHAbQeBOeVOYv6WRXzvMrflOWhjtOCyzytIxBB30sQfXqu_f57j0h476HM4u2wfzzE2=w408-h306-k-no" },
+            { name: "Panchvati Supermarket - Brampton", address: "8814 The Gore Road Brampton, ON L6P 0B1, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nqugmF45-TXuaQbwtgbCRM37WrRX7R6ZdFtDlzJOgz9qZRQ8FZ3Sg9qIb1189KgbuWUteaOJtG48RcAaEGQQtTHp3tBC9DQdfHXGINxcaLHHzAPf9HysUhOb3jmjdJDMfQAIpQ=w408-h306-k-no" },
+            { name: "Om India Food Centre-Kitchener", address: "5 Manitou Drive, Unit 102 Kitchener, ON N2C 2J6, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npQVEswL43cqIqmt_CavWsF_Diat-zf18kwmNNsGxMVTqXbCyjkCIaYmZxyyrN_JgWUOAX8F3ouTaVLRcPGrGypLdHQfpDlEfe3Td_ELVTou9BO0jfEPJRjyQRpa8J1HDcRtZ3ssw=w408-h306-k-no" },
+            { name: "Leela Supermarket", address: "263 Queen Street E Brampton, Ontario L6W 2B8, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npgb-5uXX2LzE3Tdc60xnC5hO2IoDI7Z1i0J0U8on7hWbzRg3sEvWPGuf2XB7Zw6ml0Ac7pWkGojXmBBDK9XX00oWNO8fYG5FXKGSGaKMZfNrAm76A0EXt9UgJ0PSnZxCpDgnuK=w408-h544-k-no" },
+            { name: "Om India Food Centre", address: "71 West Drive, Unit 42 Brampton, ON L6T 5E2, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrxt_HZ9JnsQdi2dDT_PpSBCPSMnX3Kn5KAgPg_j3qTAcY3NX0yTleoGHQLUbYXhn5j1AjBo6A8tMVuNzMeFbBIPqG_eQ1UBqL8YHgDb1-_iChxBv6OfaVEEpq4ha9eSonljoW2=w408-h544-k-no" },
+            { name: "Indian Food Land - 2", address: "15 Fandor Way Brampton, ON L7A 2G9, Canada", territory: "Brampton", image: "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.mapquest.com%2Fca%2Fontario%2Findian-frootland-455155456&psig=AOvVaw17yXB0yFjth-RMacHSqtc_&ust=1753528683130000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCLjQsMTx144DFQAAAAAdAAAAABAL" },
+            { name: "Indian Punjabi Bazar-Raylawson", address: "499 Raylawson Blvd., Unit 4-7, Brampton, ON L6Y 4E6, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npShZ6BKN_SWTYXf1B6R9wrK2_dVvFUgrlKwOwT9Yj1mAzm107JccESAR2KRjLQt28k_v9Ac43jNM4LKlZ-oqlFajSFtY3f8Ci5RvkglgRO8v7uEq1LoYwV4qHjtq5xcS5Q80f-=w426-h240-k-no" },
+            { name: "Indian Food Land", address: "45 Dusk Drive Brampton, ON L6Y 5Z6, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4no960EQhfbQmzEWx5T5yt2YmjWPKCbQGbwB9jEqsA5gLcK2YNtDlhB2wdZ0i1JO3UpOhcwW3hW4jN7Z0wWyax13xG0b2K6XGJHmmGK2ksP0nrbo5RBk5PDLZKf5Sviyjqw6XwEW=w426-h240-k-no" },
+            { name: "Indian Food Land -3", address: "9985 McVean Drive Brampton, ON L6P0K8, Canada", territory: "Brampton", image: "" },
+            { name: "Indian Frootland - 4", address: "1465 Mayfield Road, Unit - 1, Brampton, Ontario L7A 5G6, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npeB3BzTjuXWDT3ewaE32TQlEPoYo578zxEu8jmd1kDt2X3a-UV6tfggnFiWqi55UxSj7A8uwLyPKxh_Wp8p80sg85dfkFOHEU79KuLRBXKKZPVgSRhPFOkGP1xSXKn8bnkXAgf=w426-h240-k-no" },
+            { name: "Luxshi Super Store - 2", address: "13 Fisherman Drive, Unit 11 &12, Brampton, ON L7A 2X9, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nqM_iGnGEGs6hko0_t-PkHXP0kCJW84MJAtoLFFQtd0KYzsuxfxNDU34KTsMNnevPX9sVyFbiexZdklMDiTSfuRd3Q--zlkotRtwwl_ktGLJP2Tz-hIjLhPxVZu_CyQtKmrmg5S1Q=w408-h306-k-no" },
+            { name: "Food Asia", address: "791 Bovaird Drive Brampton, ON L6X 0T9, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nphhYZJ8Cc64cX81nhHWywIWXmQq_2qojG2FMYE1zRC9rTb8I4ApnYhkYT9wQHrSBL6fQuIqE6yFQ4L2QLQT5FQAWL6b3FNAAzRvCw7OtrW-1t2qq5pY1jvazXCRLnfuL8UzSHyNg=w408-h306-k-no" },
+            { name: "Iqbal Foods Inc - Brampton", address: "499 Main Street South, Unit 92, Brampton, ON L6Y 1N7, Canada", territory: "Brampton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npa-nZpX8l3AVJhM72bDxz-UQg3s0GPDp80rICV9xR9qdu8B4OuHCl0ImvIOYt_eU4X8RtMyvRz7pGfCDdqOa5nr5vBkW-1CjhrR7daQdLN5hEk9Dba7_AaabDZKYyY1DiQsuQeTw=w141-h118-n-k-no-nu" },
+            { name: "Hyderabadi Swaad - Brantford", address: "117 Market Street, Unit A, Brantford, ON N3T 2Z9, Canada", territory: "Brantford", image: "https://lh3.googleusercontent.com/p/AF1QipNBWhdVtxPdQYCT36POXW7HfwhqHoo-sjR3cwan=w145-h156-n-k-no" },
+            { name: "Desi Mandi", address: "104-1515 North Service Road Burlington, Ontario L7P 0A2, Canada", territory: "Burlington", image: "https://lh3.googleusercontent.com/p/AF1QipOynkR01YOVTFJKpegAgNyvliqsblVqEtbGfrIL=w470-h240-k-no" },
+            { name: "Swadesh Supermarket - Burlington", address: "4155 fairview st Unit 16 Burlington, ON L7L2A4, Canada", territory: "Burlington", image: "https://lh3.googleusercontent.com/p/AF1QipM_HcwFfDQQawsst-7Yrf2oxK8tmW34-JkQlFIf=w427-h240-k-no" },
+            { name: "Thiara Supermarket - Burlington", address: "4265 Thomas Alten Blvd Burlington, ON L7M 0M9, Canada", territory: "Burlington", image: "https://lh3.googleusercontent.com/p/AF1QipOR9rN-g6ZZHD68nf1dd2F04kmEKX-9f0JT_tKi=w480-h240-k-no" },
+            { name: "Panchvati Supermarket - Etobicoke", address: "45 Woobine Downs Blvd. Etobicoke, ON M9W 6N5, Canada", territory: "Etobicoke", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nquHdjiqQEXgPfEaA_CWgCTL47lFTBEG0d-YvNo8YCWF5CKFz2GcTtQ4LWpK5ENTiF4QM5vCJzuPUCI_sXVwW3mMhyKYH6xBV6DMRplPm7nwAQJ2OWAp77ZM2RDNJFVwxxXbJxe=w426-h240-k-no" },
+            { name: "Asian Food Centre - Humberline", address: "350 Humberline Drive Etobicoke, ON M9W 5S3, Canada", territory: "Etobicoke", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4noTsG54CsbM5sH1IMppgYBgwc3BySSNgycta0tV2J46DldEWCFEBCJ-Dwtj6FwxUidCAKKoJmnlZoYjCpPjbWdtZq2CodpSLa_Qy7FOqcQN7iXn4mdIatrA3nJV8iso4Di2I6racg=w408-h306-k-no" },
+            { name: "Freshchoice Indian Supermarket", address: "2700 Kipling Ave, Unit - 1 Etobicoke, ON M9V 4P2, Canada", territory: "Etobicoke", image: "https://lh3.googleusercontent.com/p/AF1QipOJ1AYljiYoBmnFtMQGuG-M4Ivpoas_qFugswgZ=w408-h306-k-no" },
+            { name: "India Bazaar-Islington", address: "2645 Islington Avenue Etobicoke, ON M9V 2X6, Canada", territory: "Etobicoke", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npzzSubdfKGcUmTfNx0H46Qr9J43cJEmM60AheDMcszM7W244pgFKlOmQUPRUySOtL1FRSF3LYc4o9PWpHUmlrReeZc8WnLHE6-mmIbjhYIAsYMre7RgciSz6AOv9h3y9cU0ncK=w408-h306-k-no" },
+            { name: "The Indian Supermarket - Guelph", address: "170 Silver Creek pkwy N Guelph, ON N1H 7P7, Canada", territory: "Guelph", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4noG9YvkUYOlAkhie5Ein4QLq3QO61klTEWq3qQCI4ShS7ceirGpkXoE5zzUsICNxzkDue8qqgxjbWZRif0W1VqliT0Y7a1xe_9YezPRjqNg7SNvfHYC6w5QEfQ0aKozIZwG_2-N=w426-h240-k-no" },
+            { name: "Desi Mandi- Hamilton", address: "2070 Rymal Rd, Unit, 4 to 7, Hamilton, ON L0R 1P0, Canada", territory: "Hamilton", image: "https://lh3.googleusercontent.com/p/AF1QipOAByOPL7B6s3WHW9h2HVmt1UCAePlw28rhpM6s=w408-h306-k-no" },
+            { name: "Bombay Spices - Hamilton", address: "1645 Sismet Road, Unit 11, Mississauga, ON L4W1Z3, Canada", territory: "Hamilton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrkrnymHdffR2LfgZixU_l6UrhkNOmmLMsCpUHV6DeClO7dH0pLn_ERopPFkO3EroNjIZXEPR08BAEJ-mPonGmjHUKjKyyKJ2qz2KB-6wX2zDftYZBIHSH4SdaXH9hXGi6yYjn7=w408-h544-k-no" },
+            { name: "Bombay Spices - Kitchener", address: "600 Fairway Road S, Unit A, Kitchener, ON N2C 1X3, Canada", territory: "Kitchener", image: "https://lh3.googleusercontent.com/p/AF1QipNvaIjIrxCk22DleiFzBh3weerUOK3n9dkZcVpi=w408-h271-k-no" },
+            { name: "Super India Food Market - Cambridge", address: "4-611 Hespier Road Cambridge, ON N1R 6J3, Canada", territory: "Kitchener", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4no5KWZXgwamxewfOXqVOTroiQhs2p5ZUbNvTPsgmp2uBdXlJOj0RdSdmzD1Yvx55tpPfVKUGhMBXpTUAfvJiJmX62o5zX24l3fN4iXUmZPaqfFnw2IK9muYOAr31kFroj-QQj4=w408-h544-k-no" },
+            { name: "The Indian Supermarket - Kitchener", address: "509 Wilson Ave Kitchener, ON N2C 2M4, Canada", territory: "Kitchener", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nofbD6CC3eVVnPAa6rtgijfAxn6dda-KqG_YXp-oEb3H987grFCiaWvkTmrTm5tCosEH46gGrRESAJwYGil2Td7GOWdMIjHEorFK-asEcOjenMDzjw_bk9oAfS79Ylr9ZJ1H5QM=w408-h295-k-no" },
+            { name: "KWC Convenience Inc.", address: "128, King st N, #102, Waterloo, ON N2J 0E9, Canada", territory: "Kitchener", image: "https://lh3.googleusercontent.com/p/AF1QipMzTzElxc9MlsmOslOE8qGPfmtX5yOK4HtJT83O=w408-h306-k-no" },
+            { name: "Desi Food Mart Inc", address: "376 Hespeler Road Cambridge, ON N1R 6J6, Canada", territory: "Kitchener", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npo3NHl0zEAm9gooIJaizQzqakL1NY9DKryQsA56Abz0W4Kc3KzuI4UcXEoHXNoq1xzOmQdOLAPKXc2g5Z9MZej2tVuX1CiHFWaAsj42R8Vc4K83-ZaIc0hjHFdyzFbdsJkJz54=w408-h306-k-no" },
+            { name: "Sparsh - The Indian Touch", address: "1252 King St E Kitchener, ON N2G 2N6, Canada", territory: "Kitchener", image: "https://lh3.googleusercontent.com/p/AF1QipNqCrwQ9wz7Pb2F-81iLhSIyZ2c6_OXKLIyIO9O=w408-h306-k-no" },
+            { name: "Bombay Spices- London", address: "1332 Huron St, Unit 1, London, ON N5V 2E2, Canada", territory: "London", image: "" },
+            { name: "Indian Fresh Market", address: "1251 Huront Street London, Ontario L5Y 4V1, Canada", territory: "London", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nqh2M2rlBt-QNJCUznny3twEFMSAPza03OX9NVW6VpyT5SF6ahxvj-GMMpxM2vjL-T9Bu3OhsfYG-5iPMANT0IajCR24fFSdUBx41rTHdZaqhZHRqBiY3CypNef4RopPsQQ8uEf=w532-h240-k-no" },
+            { name: "Indo-Asian Groceries & Spices", address: "689 Oxford St W London, ON N6H 1V1, Canada", territory: "London", image: "https://lh3.googleusercontent.com/p/AF1QipOhmMrpmhnL8i1RS1LRAAcRDU3PlZcv2YNGNNS6=w408-h271-k-no" },
+            { name: "Panchvati Supermarket-Markham", address: "10 Karachi Dr Markham, ON L3S 0B6, Canada", territory: "Markham", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npTDJ06B2Ci2yWRA1ESBY85JW3RCjcAc3XaPbyEdz4LeqanLQo7iBQtadDiRxiJIncINX6E16p4XkDqJvPZODLDCiv-YZgLHtZwBcpT6aCvRLmInQQAVQMo9RpkBHGeCvXi8UNd=w527-h240-k-no" },
+            { name: "Grocery Bazaar", address: "17 Wilson Drive Milton, ON L9T 3J7, Canada", territory: "Milton", image: "https://lh3.googleusercontent.com/p/AF1QipPN01pLX7Eewdco257agqI6iAiHWAQ07nu_nZY4=w513-h240-k-no" },
+            { name: "Thiara Supermarket-Milton", address: "810 Nipissing Road Milton, ON Canada", territory: "Milton", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npot-rytrgrKJ5u1AoL3GTcOotsy8foJ7RQjLE-5UiJnIOjtvq-YG0a15BwU_fhwsAKsx6i2abYL2qCSwW6TCsboozlu8pQ4Tg14ve-Iw4Rn57mSb4g_wRsSnHcvCf7VLUbJlAHrg=w408-h544-k-no" },
+            { name: "Bombay Grocers", address: "1201 Britannia Road West, Mississauga, ON L5V 1N2, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/p/AF1QipPvFKSqOgtyT8GtJJxxfwR0ni9h0LjSqwpBK8VQ=w408-h306-k-no" },
+            { name: "Patel Brothers - Mississauga", address: "169 Dundas Street East Mississauga, ON L5A 1W4, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nqxCTWLAQfY2gL30ibbrI4lKhavJaZepapHT2Ts0gJWKzPUzSuUV_Tlxeg3JWvNcK6w4D0Cs9MMBxYAtRnuGdbKJVZngmjrHurd8qgs1EMKRrGezz0YbBoJ6-tOOIAJHzmjj60kxw=w408-h306-k-no" },
+            { name: "Dundas Fruits & Vegetables", address: "38 Dundas Street west Mississauga, ON L5B 1H3, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nqrayvVgNA3FAT3Ny0FixujQ7ZyI5Svh_bScnfipIGR5HVDe7qYJmagg33_po_8feU2TGOQqe6WW_7eLVrSsFjRMDxoHjntSZvb8msIfSuiH6jy7YxB1lTvxDW1HHv8sFq-xNA=w426-h240-k-no" },
+            { name: "Katpakam Grocery", address: "6970 Lisgar Drive, Unit B1, Mississauga, ON L5N 8C8, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4noUw0qcHPiFwCYbr7wEI7xby1lvJRoZP46nNTfALlAHJjFnL7yNwueVqd23VyBo-sCrRRKCF5U9Wcwr3vuzHoZ4dXZQqTm-XYVtNEc3h1hF5b49pY2NurlXyndLLrTuE4xhBKKbPQ=w408-h544-k-no" },
+            { name: "Namaste India Supermarket - Mississauga", address: "3037 Clayhill Road Mississauga, Ontario L5B 4L2, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/p/AF1QipPRsq6aLaHI0wzCRA-zqqfUptgHVcTb-AW-wF_L=w532-h240-k-no" },
+            { name: "Thiara Supermarket-Trelawny", address: "3899,Trelawny Circle Mississauga, ON L5N 6S3, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4noPYNsTB5rB2GMA8zuPgn4dd9yLTAJnERUiC6jWyRW9RJECMOkADCbrYjbNH4xhObtUDO0A0h3q_Z75CA6Uh79iQGj1bqBajdy307vbrx_o8EUyjvbHMSzPI_itSlsfYXYzcDs65A=w426-h240-k-no" },
+            { name: "Om India Food Centre - Mississauga", address: "60 Dundas St.E., Mississauga, ON L5W 1A4, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/p/AF1QipPukRHsF6sEzjtiCPNEdtrhibP_80tbi8ogEQTv=w426-h240-k-no" },
+            { name: "Royal India Grocers", address: "3050 Artesian Dr Mississauga, ON L5M 7T3, Canada", territory: "Mississauga", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrutBbt1ZMGc7PnySBk0ygoTfWUjT_fWBImmKpwvmfEM6DidSGkbsmhJLGJvB4ou0MmAa5_s46qTaVmtuxtB_gdOHzeV9KG22Jc9uj572e0exoBzSmK7PrYI4Y9XR2RogkHddaA=w408-h306-k-no" },
+            { name: "Apna Bazar", address: "56 Forest Manor Road, Unit2,1(b) North York, Ontario M2J 1M1, Canada", territory: "North York", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npp5NdJIdg-S-JCnI9qJrwIcjqY86-hS2CbFdozqV4uDehfqO0KvzVQi7uDgS-R0UHFxg9VBn3wgZ1iwgOukZYyijrCyN2CHnssCP-JsAfdPOYYvH4hRNv8xr4tY9GZEP7XFPstxQ=w408-h306-k-no" },
+            { name: "Iqbal Foods- North York", address: "107 Parkway Forest Drive North York, Ontario M2J 1L8, Canada", territory: "North York", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nqQyn7xeYqiVQRaS60eofOB7nzI9TgEitA_HuLzw08x2Yb9IX01GHwy3K4ENzdtZh42uHeA296YtFjBVbU8TlAdwRcCggXJ4acX7XSvit3CMBtnH0AGhfkSRttbD-XTbXDto9qOaA=w426-h240-k-no" },
+            { name: "Bombay Grocers- Oakville", address: "2333 Taunton Rd, Unit #7 Oakville, ON L6H 0N5, Canada", territory: "Oakville", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrNiPMVUPKDx6lr3xPB1qMEfnpIcItgv2crGM13cd41EYQKtmE1305I1FdM7Lq1QBjdwp77xqQJASNU4rD4Mw7tVDkUUO-uYDbqO6YkJuPmMHmalLnJHieJLRx9V455P5TazEB1=w408-h883-k-no" },
+            { name: "East Indian Supermarket", address: "2427 Trafalgar Road Oakville, ON L6H 6K7, Canada", territory: "Oakville", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nr8FcJ10H2HaOxC1icE1aBCz0TW8Lc5zpW0d9THoJHDTYZhd6as0SENggwe5EgFCu31sQTOTGPp91QfT2iU0gJs7en_mRW9CQFfGxyAI9p-cGNkuUTW_KAOkSqmwNb9Xu5MNDU=w426-h240-k-no" },
+            { name: "Spice Bazaar- Oakville", address: "105 Cross Ave A5 Oakville, ON L6J 2W7, Canada", territory: "Oakville", image: "https://lh3.googleusercontent.com/p/AF1QipPu1sU72NLNCmFbS-_eMebO89ukczpzyo77qab_=w426-h240-k-no" },
+            { name: "Shri Hari Inc", address: "685 Fischer-Hallman Rd Kitchener, ON N2E 4E9, Canada", territory: "Ontario", image: "" },
+            { name: "Apna Food Bazaar Etobicoke", address: "4896 Dundas St Etobicoke, ON M9A1B5, Canada", territory: "Ontario", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npeF3UBfv1pi0y9OQ_eqh8SXUI_lk2pO-rSNHqT6wDFg65Xmu9dJcAUQG30Q5qGqAhX0tregrzAc-5FFr8RwCNB03qKSE0BxnsoTfAITqtSGzt2BDNSE8IxUBXP8t6Me6TrNUqsJw=w408-h544-k-no" },
+            { name: "Panchvati Supermarket - Oshawa", address: "1053 Simcoe St. N Oshawa, ON L1G 4X1, Canada", territory: "Oshawa", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrbaeR_wgV86nghvQNYC1ik13VAn8OAp_ysF7Irbbc6OgRDPU3-UGL3qfKrNmIet_IxhdeCA4dfqlLlESPP1bFlYov7ZyBL2ckDPieX297JeaJLuFDSFpk5e08Dz1enxwPOE4WkFw=w408-h306-k-no" },
+            { name: "Vinland Supermarket", address: "1251 Simcoe Street North, Unit 2 Oshawa, Oshawa L1G 4X1, Canada", territory: "Oshawa", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrm4KmrpOSJloSoC_mZkFozurRcvjd-cVWoq2PYbjRsvdkbRxInx2G-pommucuQeAmYhNkyfwd5iUriZ196mskbD6rUNFQ0aEhnH9ZvuONm0NzEu6bBGq6PgT6w1z_DKioTJ_sR3Q=w289-h312-n-k-no" },
+            { name: "Byrava Supermarket", address: "3-133 Taunton Road West Oshawa, ON L1G 3T8, Canada", territory: "Oshawa", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrhUvUq4useeTLNwNphV1a_o-RDcVuiYrkUzFpd01hSu7nOzKAfgTllTrybJTz8VdJkKzf9t3PlOwuSTAk00DfN2T0jmag0ZYn12iZFPg83_dOSRmkY0KIb90iO_QSw1m4VeH6ORQ=w426-h240-k-no" },
+            { name: "Desi Cart Groceries and convenience", address: "1214 simcoe street north,L1G 4W9, Oshawa, Ontario L1G 4W9, Canada", territory: "Oshawa", image: "https://lh3.googleusercontent.com/p/AF1QipNWqQg0AR3lqZY0aBLXWhHGLRF_0Tpe4GDXd31P=s1360-w1360-h1020-rw" },
+            { name: "Skyfarm Food Mart", address: "1150 Simcoe St N Oshawa, ON L1G 4W7, Canada", territory: "Oshawa", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nr4LMyJGGkNWJWZFtVExLTVvQPvzifMzR7z-A-GintOkhHYjTOYG9ngOlsUq507U752AMX-lCv3M9yNgIZmsxyCZpNagqZXSu7PHYCg_vw1WCwqYwLC6pB7SmOTp0s83VcssPMz=w532-h240-k-no" },
+            { name: "The Indian Supermarket - Kanata", address: "474 Hazlden RD UNIT-1 Kanata, Ontario K2L4E5, Canada", territory: "Ottawa", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrMX_aUu6QbKOX3O2fSC73YHB7WgV_z6AMxinC9G2aOVm3q4FjqsY1U0Efjyz7A3__wZ_0NQ3P1MZ2A8SBUyQkzM0iYm4v9DeoFbHF1ANv9n-jjcJMGSRq8JpQnTxMZQ3rrCIng=w408-h305-k-no" },
+            { name: "The Indian Supermarket - Ottawa", address: "1547 Merivale Road Unit 6, Nepean, Ontario K2g 4V3, Canada", territory: "Ottawa", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4noK_Gj-yejP9XL4RCZTHcXlwRNEk3Tp4RdZv7bOTeaMJps7Eq2SevFJsV8DxqKS_ZsjX57XJfArs-2x3koBeS7lo3FluSMnByrX5n3aDq8Z6IFOtBcfpX5DoeEZik0q38ZRhPds=w408-h306-k-no" },
+            { name: "The Spice Store - Charlottetown", address: "449 University Plaza Charlottetown, PE C1A 8K3, Canada", territory: "Price Edward Island", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npk7L23iE6pXjRgrGgkWi9XYW6fnCtLDWRjpCb_2UxinosgmkDSMApaLom57r65cdR379QRuvDyfbv_6pEmGMjkJ_mSMWyzaHMPdq-xroQiOq0E5aHIe4p5FHQYXZD5XubkxUsnHA=w408-h544-k-no" },
+            { name: "S&S Cash and Carry", address: "1800 Midland Ave Scarborough, ON M1P3C2, Canada", territory: "Scarborough", image: "" },
+            { name: "Rafik Enterprise Inc", address: "787 Warden Ave., Scarborough, ON M1L 4C2, Canada", territory: "Scarborough", image: "" },
+            { name: "Iqbal Foods Thorncliffe", address: "6 William Morgan Drive Toronto, Ontario M4H1E5, Canada", territory: "Scarborough", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npaN2qvJJQcnittHQ1vEJaglTYETkkzdnQf1IjNMOdbCHVSSVHsp1R9DrBcLpIqlBBcqOnfDuBLdZeTcGn1FBUjoSuH_Bjpgiguamsdu-AiDjbfBrNpPAq0dYJ_reYq6fcmsiul=w426-h240-k-no" },
+            { name: "Namaste Indian Supermarket - Scarborough", address: "820 Markham Rd UNIT 1-2 Scarborough, Ontario L5T 1Y8, Canada", territory: "Scarborough North", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nokHJ3Y1IdNKw9mbw_RQNJwUzxVVHB5PLIAhV2HarD4HbTvDHX6DP3qX_KyMSDs8ZwpIdY7zcXF4-cd_Elq4SViSkp-VV_iyzSLE8oo3QCLpMF_adhg5uz69W3UtouS7ncUbdd8=w408-h839-k-no" },
+            { name: "New Spiceland Supermarket-Sheppard", address: "5800 Sheppard Avenue East Scarborough, ON M1B, Canada", territory: "Scarborough North", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4np5rfxIX1oUZhRRNo3zil-DlwBAqiJXaJhOyEIKtubFOGi5pkhqyYf1nkJ8Zl7emm__NeT-Wp91RVBKOHZLMnr8xeGaHQ2DWlkZ__c7IAuTXeuCFD4tA3wHUZ2lX6MXo__sZhp9yA=w426-h240-k-no" },
+            { name: "Fusion Supermarket", address: "1150 Morningside Ave., Suite 113, Scarborough, ON M1B 3A4, Canada", territory: "Scarborough North", image: "https://lh3.googleusercontent.com/p/AF1QipPRQRQMSdvDwo9YmMXd2f-_xQd3HELw6pAWfTpf=w426-h240-k-no" },
+            { name: "Famous Indian Supermarket", address: "1871 O'Connor Dr. Scarborough, ON M4A 1X1, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrFnxjmL0uqMPCGiwg755iUkEsCIrO_z4WqTtRzEjSC9rcAznG3Bu31RDNcuFZlL8nOH3Go82FdJRQXt46qJjYTRzVD5XUY0VtupNOblmgWfXrIq-FbLGNjXSkrUP_QF_zXXQg=w426-h240-k-no" },
+            { name: "Atiya's Fresh Farm", address: "D-1225 Kennedy Rd Scarborough, ON M1P 4Y1, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/p/AF1QipNeKL_gfN68Uvx_WDd2DPQcKKQsQDhRe1NwgNl9=w408-h306-k-no" },
+            { name: "India Town Food & Spices", address: "641 Markham Road Scarborough, ON M1H 2A4, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrjkWSOK2lpHhPp-GuMlTzdI8Iv_dq8dHC_Qnp3H38UBvzmzMleHvdzTieLrUquVkOJm_MifdANUb0luCONvxceUCCS_qoHUdBkxii7M13k8BShvpKA7Wb0yUmYUHTjywcb1Yk=w408-h544-k-no" },
+            { name: "S.P. Importers", address: "2863 Lawrence Av.E. Scarborough, ON M1P 2S8, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npp_FtwuWluafcycYaiQ-YQXz_PTNsGoYrg-ZkZ4f9D0JXwF3Mdw1juNkeGE-G-QS4KEvRX7sEtRqTVMYmhLn5RLK_KvMJ2di_oKuu45zR0Of6TOqbGlRlbiNDND7p17-5kEn0y=w500-h240-k-no" },
+            { name: "South Asian Supermarket - Stouffville", address: "5402 Main Street, Unit 7 Stouffville, Ontario L4A 1H3, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nrU-JjanOD0iEGEaQLBF6R6gdmaVNivx0KQlqpr9wg7Aap1yqRP-pQ4fJzc7RfSGviF4s8GuFJ122lJSdmoXtgmc5Fw4aSewRy4ASMsizg-llzt_Z4kRgXoWW9H2I2X2E5YiBRG=w408-h306-k-no" },
+            { name: "Panchvati Supermarket-Tuxedo", address: "1255 Markham Road Scarborough, ON M1H 2Z5, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npT7aYfMoVs6hosxQvfhN_EaiAwj4-tylsKJuzQw53xuJsLhfbKnDxUAmf1JPzjb4LmHihRfR64Jsr6XOeVVw-BqU5qJFukTymSXKlKuQn-Jv-7FEibdryD4ReIdeKC1f8IqL5K=w426-h240-k-no" },
+            { name: "South Asiyan Supermarket", address: "9833 Hwy 48 Markham, ON L3P 3J3, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nq7OV1nB6vT1N26L8WxIP8UjJj7nqzKc-lVD8AoVGsfOx12JNQP53TyxbquE7IYkEIuPdRnpmDXHbio56aQ5LkBIazkeftI_vK_LFBC9ciNgFiKl-RxmN0rwa9sKNV8gopRjVNB=w426-h240-k-no" },
+            { name: "Jian Hing Food mart", address: "678 Markham Road Scarborough, ON M1H2A7, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nq1hRgV0iHv_ENBrrVRLE1r8QOVUS3talRK1SY_hefDjeJC2mrXd4sM9bMzO5tnhlA91txPjgbql6OL2bouHXxlIHIo6vHdVqL6UncrMu6fMsRZGNQZ5uoyfCIhClyoN0Q2Eu2Rnw=w408-h306-k-no" },
+            { name: "Panchvati Supermarket -Scarborough", address: "2141 Ellesmere Rd Scarborough, ON M1G, Canada", territory: "Scarborough South", image: "" },
+            { name: "Iqbal foods Birchmount", address: "462 Birchmount Rd Scarborough, ON M1W 3T8, Canada", territory: "Scarborough South", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npQ0PWknZyRTCKLYtOg1Q_KaSLRi3uyg9BHqRG0r9pinD94ZimTIde87VwcucqOcMawO76YmdGXhZhR3WllCoJbHuUbk5fkCqKtLn3bW7J5SSAUqgJvYVG90xNKJb1uEAqQKjU=w426-h240-k-no" },
+            { name: "Ambal Trading - Toronto", address: "591 Parliament St Toronto, Ontario L5T 1Y8, Canada", territory: "Toronto", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4nqLlX0B7dTlsJwk_QWN9l3DB6YgLrvLvf1ttimk2O8GvxXANXATrB7UX8CeY32hwQH2chcVAmm6psedMfQHwRQSevPa6I0QkzvXClVL4BwmZeIkA8LTRnLr5NRJec7HsVDssGvh=w408-h302-k-no" },
+            { name: "Navs Grocery", address: "89 Queens Quay W Toronto, Ontario M5J 2L1, Canada", territory: "Toronto", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4npj1JpEtr25Zt3eA2AxFhjCpkFWQbgFhNTDAycwA7b7NgGy3PiVdaHL-hgi8Z_tIo1oSf8bIL_4vf_O8F4XeZQaEoJRcLVE-nxf4tezUj8GPNJ_ro3hO6iwsLicl7Z6pX_v54il=w408-h306-k-no" },
+            { name: "Vedika Foods of Kitchner Waterloo Inc", address: "2399 Kingsway Dr Unit, 7, Kitchener, Ontario N2C 1A5, Canada", territory: "Waterloo", image: "" },
+            { name: "Swagat Indian Market", address: "400 The Boardwalk Waterloo, ON N2T 0A6, Canada", territory: "Waterloo", image: "https://lh3.googleusercontent.com/gps-cs-s/AC9h4np5f0JCJeGDRGrXXdPRAknt4MnC1gk9SUn_W-D7rh6bfEqjd6NvLRaEFhayNwCuF2vFAinbyOX0N4QS6g-dFTWuaiQuOW5Yghk5jAIVfKk5DaWy7Lpv704D1pCrGjet4GrYfrnZ=w408-h306-k-no" }
+        ];
+
+        let map;
+        let markers = [];
+        let filteredLocations = [...locations];
+        let activeLocationIndex = -1;
+
+        function initMap() {
+            // Initialize map centered on Ontario, Canada
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 8,
+                center: { lat: 43.7417, lng: -79.3733 }, // Toronto center
+                styles: [
+                    {
+                        featureType: "poi.business",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+
+            // Initialize the interface
+            populateTerritoryFilter();
+            displayLocations(filteredLocations);
+            addMarkersToMap(filteredLocations);
+
+            // Add event listeners
+            document.getElementById('searchInput').addEventListener('input', handleSearch);
+            document.getElementById('territoryFilter').addEventListener('change', handleTerritoryFilter);
+        }
+
+        function populateTerritoryFilter() {
+            const territories = [...new Set(locations.map(loc => loc.territory))].sort();
+            const select = document.getElementById('territoryFilter');
+            
+            territories.forEach(territory => {
+                const option = document.createElement('option');
+                option.value = territory;
+                option.textContent = territory;
+                select.appendChild(option);
+            });
+        }
+
+        function displayLocations(locations) {
+            const locationList = document.getElementById('locationList');
+            const header = document.getElementById('locationsHeader');
+            
+            header.textContent = `${locations.length} locations found`;
+            
+            if (locations.length === 0) {
+                locationList.innerHTML = '<div class="loading">No locations found</div>';
+                return;
+            }
+
+            locationList.innerHTML = locations.map((location, index) => {
+                const imageUrl = location.image && location.image.trim() !== '' ? 
+                    location.image : 
+                    `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                        <svg width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="60" height="60" fill="#f0f0f0"/>
+                            <text x="30" y="35" text-anchor="middle" fill="#666" font-family="Arial" font-size="10">Store</text>
+                        </svg>
+                    `)}`;
+
+                return `
+                    <div class="location-item" onclick="selectLocation(${index})" data-filtered-index="${index}">
+                        <img src="${imageUrl}" 
+                             alt="${location.name}" 
+                             class="location-image"
+                             onerror="this.src='data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="60" fill="#f0f0f0"/><text x="30" y="35" text-anchor="middle" fill="#666" font-family="Arial" font-size="10">Store</text></svg>`)}'">
+                        <div class="location-info">
+                            <div class="location-name">${location.name}</div>
+                            <div class="location-address">${location.address}</div>
+                            <span class="location-territory">${location.territory}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addMarkersToMap(locations) {
+            // Clear existing markers
+            markers.forEach(marker => {
+                if (marker.setMap) {
+                    marker.setMap(null);
+                }
+            });
+            markers = [];
+
+            const geocoder = new google.maps.Geocoder();
+            let bounds = new google.maps.LatLngBounds();
+            let geocodePromises = [];
+
+            locations.forEach((location, index) => {
+                const geocodePromise = new Promise((resolve) => {
+                    geocoder.geocode({ address: location.address }, (results, status) => {
+                        if (status === 'OK') {
+                            // Create custom marker icon
+                            const markerIcon = {
+                                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                                    <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="16" cy="16" r="12" fill="#ff6b35" stroke="white" stroke-width="2"/>
+                                        <circle cx="16" cy="16" r="6" fill="white"/>
+                                    </svg>
+                                `),
+                                scaledSize: new google.maps.Size(32, 32),
+                                anchor: new google.maps.Point(16, 16)
+                            };
+
+                            const marker = new google.maps.Marker({
+                                position: results[0].geometry.location,
+                                map: map,
+                                title: location.name,
+                                icon: markerIcon
+                            });
+
+                            // Create info window content with better image handling
+                            const imageUrl = location.image && location.image.trim() !== '' ? 
+                                location.image : 
+                                `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                                    <svg width="250" height="120" xmlns="http://www.w3.org/2000/svg">
+                                        <rect width="250" height="120" fill="#f0f0f0"/>
+                                        <text x="125" y="65" text-anchor="middle" fill="#666" font-family="Arial" font-size="14">Store Image</text>
+                                    </svg>
+                                `)}`;
+
+                            const infoWindow = new google.maps.InfoWindow({
+                                content: `
+                                    <div class="map-popup">
+                                        <img src="${imageUrl}" 
+                                             alt="${location.name}" 
+                                             class="popup-image"
+                                             onerror="this.src='data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg width="250" height="120" xmlns="http://www.w3.org/2000/svg"><rect width="250" height="120" fill="#f0f0f0"/><text x="125" y="65" text-anchor="middle" fill="#666" font-family="Arial" font-size="14">Store Image</text></svg>`)}'">
+                                        <div class="popup-name">${location.name}</div>
+                                        <div class="popup-address">${location.address}</div>
+                                    </div>
+                                `
+                            });
+
+                            marker.addListener('click', () => {
+                                markers.forEach(m => {
+                                    if (m.infoWindow) m.infoWindow.close();
+                                });
+                                infoWindow.open(map, marker);
+                                selectLocation(index); // This now uses the correct filtered index
+                            });
+
+                            marker.infoWindow = infoWindow;
+                            markers[index] = marker; // Store marker at the correct filtered index
+                            bounds.extend(results[0].geometry.location);
+                        }
+                        resolve();
+                    });
+                });
+                geocodePromises.push(geocodePromise);
+            });
+
+            // Wait for all geocoding to complete, then fit bounds
+            Promise.all(geocodePromises).then(() => {
+                if (markers.length > 0) {
+                    map.fitBounds(bounds);
+                    if (map.getZoom() > 15) {
+                        map.setZoom(15);
+                    }
+                }
+            });
+        }
+
+        function selectLocation(filteredIndex) {
+            // Remove active class from all items
+            document.querySelectorAll('.location-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Add active class to selected item using filtered index
+            const selectedItem = document.querySelector(`[data-filtered-index="${filteredIndex}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('active');
+                selectedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            // Center map on selected location using the correct marker
+            if (markers[filteredIndex]) {
+                map.panTo(markers[filteredIndex].getPosition());
+                map.setZoom(15);
+                
+                // Close all info windows
+                markers.forEach(marker => {
+                    if (marker && marker.infoWindow) marker.infoWindow.close();
+                });
+                
+                // Open selected marker's info window
+                if (markers[filteredIndex].infoWindow) {
+                    markers[filteredIndex].infoWindow.open(map, markers[filteredIndex]);
+                }
+            }
+
+            activeLocationIndex = filteredIndex;
+        }
+
+        function handleSearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const territory = document.getElementById('territoryFilter').value;
+            
+            filteredLocations = locations.filter(location => {
+                const matchesSearch = location.name.toLowerCase().includes(searchTerm) ||
+                                    location.address.toLowerCase().includes(searchTerm);
+                const matchesTerritory = !territory || location.territory === territory;
+                return matchesSearch && matchesTerritory;
+            });
+
+            displayLocations(filteredLocations);
+            addMarkersToMap(filteredLocations);
+            activeLocationIndex = -1;
+        }
+
+        function handleTerritoryFilter() {
+            handleSearch(); // Reuse search logic
+        }
+
+        // Make initMap available globally for Google Maps callback
+        window.initMap = initMap;
+
+        // Initialize basic functionality when page loads (for cases without Maps API)
+        window.addEventListener('load', () => {
+            // If Google Maps API is not available, show a message
+            if (typeof google === 'undefined') {
+                document.getElementById('map').innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100%; background: #f5f5f5; color: #666;">
+                        <div style="text-align: center;">
+                            <h3>Google Maps API Key Required</h3>
+                            <p>Please add your Google Maps API key to enable the map functionality.</p>
+                            <p>Add this script tag to the HTML head:</p>
+                            <code>&lt;script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEubjjggi2bps-Jhf7iWJykvlywHJ95Cw&callback=initMap"&gt;&lt;/script&gt;</code>
+                        </div>
+                    </div>
+                `;
+                
+                // Still show the locations list
+                populateTerritoryFilter();
+                displayLocations(filteredLocations);
+                
+                // Add event listeners
+                document.getElementById('searchInput').addEventListener('input', handleSearch);
+                document.getElementById('territoryFilter').addEventListener('change', handleTerritoryFilter);
+            }
+        });
+    </script>
+    
+    <!-- Add your Google Maps API key here -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEubjjggi2bps-Jhf7iWJykvlywHJ95Cw&callback=initMap" async defer></script>
+</body>
+</html>
